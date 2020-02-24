@@ -28,18 +28,18 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.pictureBox1 = new System.Windows.Forms.PictureBox();
-			((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+			this.img = new System.Windows.Forms.PictureBox();
+			((System.ComponentModel.ISupportInitialize)(this.img)).BeginInit();
 			this.SuspendLayout();
 			// 
-			// pictureBox1
+			// img
 			// 
-			this.pictureBox1.BackColor = System.Drawing.Color.Gray;
-			this.pictureBox1.Location = new System.Drawing.Point(12, 12);
-			this.pictureBox1.Name = "pictureBox1";
-			this.pictureBox1.Size = new System.Drawing.Size(776, 426);
-			this.pictureBox1.TabIndex = 0;
-			this.pictureBox1.TabStop = false;
+			this.img.BackColor = System.Drawing.Color.Gray;
+			this.img.Location = new System.Drawing.Point(12, 12);
+			this.img.Name = "img";
+			this.img.Size = new System.Drawing.Size(776, 426);
+			this.img.TabIndex = 0;
+			this.img.TabStop = false;
 			// 
 			// Form1
 			// 
@@ -47,18 +47,18 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.BackColor = System.Drawing.Color.Black;
 			this.ClientSize = new System.Drawing.Size(800, 450);
-			this.Controls.Add(this.pictureBox1);
+			this.Controls.Add(this.img);
 			this.Name = "Form1";
 			this.Text = "Form1";
 			this.Load += new System.EventHandler(this.Form1_Load);
-			((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+			((System.ComponentModel.ISupportInitialize)(this.img)).EndInit();
 			this.ResumeLayout(false);
 
 		}
 
 		#endregion
 
-		private System.Windows.Forms.PictureBox pictureBox1;
+		private System.Windows.Forms.PictureBox img;
 	}
 }
 
