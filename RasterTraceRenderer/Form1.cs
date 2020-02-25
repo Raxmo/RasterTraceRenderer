@@ -11,60 +11,94 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Diagnostics;
 using System.Threading;
+using System.IO;
+using System.Drawing.Imaging;
 
 namespace RasterTraceRenderer
 {
 	public partial class Form1 : Form
 	{
-		long FT = 0;
+		double FT = 0;
 		Stopwatch sw = new Stopwatch();
-		int FPS = 60;
-		long deltat = 0;
+		static int FPS = 60;
+		double deltat = 0;
 		bool done = false;
+		long tpf = TimeSpan.TicksPerSecond / FPS;
 
-		public void UpDt()
+		Random rand = new Random();
+
+		public struct Tri
+		{
+			public Utils.Vec[] verts;
+		}
+
+		public struct Mesh
+		{
+			public Tri[] tris;
+		}
+
+		public void Updog()
 		{
 
 		}
 
-		public void Draw()
-		{
-			for(int y = 0; y < img.Height; y++)
-			{
-				for (int x = 0; x < img.Width; x++)
-				{
-					int r = (int)(x * FT / 500.0) % 256;
-					int b = (int)(y * FT / 750.0) % 256;
-					int g = (int)(FT / 1000.0) % 256;
+		Tri tester = new Tri();
 
-					lock (img.Image)
+		public Bitmap Draw()
+		{
+			Bitmap drawBuffer = new Bitmap(img.Width, img.Height);
+			BitmapData dat = drawBuffer.LockBits(new Rectangle(0, 0, drawBuffer.Width, drawBuffer.Height), ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+			IntPtr Scan0 = dat.Scan0;
+			int stride = dat.Stride;
+			int h = drawBuffer.Height;
+			int w = drawBuffer.Width;
+
+			unsafe
+			{
+				byte* p = (byte*)(void*)Scan0;
+				int offset = stride - drawBuffer.Width * 4;
+				for (int y = 0; y < h; ++y)
+				{
+					for (int x = 0; x < w; ++x)
 					{
-						((Bitmap)img.Image).SetPixel(x, y, System.Drawing.Color.FromArgb(r, g, b));
+						//Blue
+						p[0] = (byte)rand.Next(255);
+
+						//Green
+						p[1] = (byte)rand.Next(255);
+
+						//Red
+						p[2] = (byte)rand.Next(255);
+
+						//Next Pixel
+						p += 4;
 					}
+					p += offset;
 				}
 			}
+
+			drawBuffer.UnlockBits(dat);
+			return drawBuffer;
 		}
 		
 		public async void GameLoop()
 		{
-			img.Image = new Bitmap(img.Width, img.Height);
-
 			while (!done)
 			{
-				deltat = sw.ElapsedMilliseconds;
+				deltat = (double)(sw.ElapsedTicks) / Stopwatch.Frequency;
 				sw.Restart();
 				FT += deltat;
-				Console.Write($"\rFPS: {1000 / Math.Max(deltat, 1)} Delta t: {deltat}");
 
-				UpDt();
+				Text = $"FPS: {(int)(1 / Math.Max(0.00001, deltat))}";
 
-				Draw();
-
-				lock (img)
-				{
-					img.Refresh();
-				}
-				Thread.Sleep(Math.Max(0, (int)((1000 / FPS) - sw.ElapsedMilliseconds)));
+				Updog();
+				
+				img.Image = await Task.Run(() => Draw());
+				
+				img.Refresh();
+				
+				//TimeSpan ts = new TimeSpan(Math.Max(0, (tpf - sw.ElapsedTicks)));
+				//Thread.Sleep(ts);
 			}
 		}
 
@@ -78,9 +112,13 @@ namespace RasterTraceRenderer
 			img.Refresh();
 		}
 
-		private async void Form1_Load(object sender, EventArgs e)
+		private void Form1_Load(object sender, EventArgs e)
 		{
-			await Task.Run(() => GameLoop());
+			tester.verts = new Utils.Vec[3];
+			tester.verts[0] = new Utils.Vec(new double[] { 20, 20 });
+			tester.verts[1] = new Utils.Vec(new double[] { 50, 50 });
+			tester.verts[2] = new Utils.Vec(new double[] { 50, 20 });
+			GameLoop();
 		}
 	}
 }
