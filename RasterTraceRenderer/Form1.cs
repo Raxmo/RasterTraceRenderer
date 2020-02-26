@@ -25,11 +25,86 @@ namespace RasterTraceRenderer
 		bool done = false;
 		long tpf = TimeSpan.TicksPerSecond / FPS;
 
+		static byte[,,] backbuffer;
+
 		Random rand = new Random();
 
 		public struct Tri
 		{
-			public Utils.Vec[] verts;
+			private Utils.Vec[] verts;
+			public Utils.Vec this[int i]
+			{
+				get
+				{
+					return verts[i];
+				}
+				set
+				{
+					verts[i] = value;
+				}
+			}
+			public void INIT()
+			{
+				verts = new Utils.Vec[3];
+			}
+
+			public void FillBottom()
+			{
+				Utils.Vec p1 = this[0];
+				Utils.Vec p2 = this[1];
+				Utils.Vec p3 = this[2];
+
+				Utils.Vec t = p3;
+
+				if(p3.y < p2.y)
+				{
+					p3 = p2;
+					p2 = t;
+				}
+				if(p2.y < p1.y)
+				{
+					t = p2;
+					p2 = p1;
+					p1 = t;
+				}
+				if(p3.y < p2.y)
+				{
+					t = p3;
+					p3 = p2;
+					p2 = t;
+				}
+
+				double invslope1 = (p2.x - p1.x) / (p2.y - p1.y);
+				double invslope2 = (p3.x - p1.x) / (p3.y - p1.y);
+				
+				double curx1 = p1.x;
+				double curx2 = p1.x;
+
+				double dy = p2.y - p1.y;
+
+				for (int scanlineY =(int)p1.y; scanlineY <= (int)p2.y; scanlineY++)
+				{
+					double ay = (scanlineY - p1.y) / dy;
+
+					double z1 = (1 - ay) * p1.z + ay * p2.z;
+					double z2 = (1 - ay) * p1.z + ay * p3.z;
+
+					double dx = curx2 - curx1;
+
+					for(int x = (int)curx1; x <= (int)curx2; x++)
+					{
+						double ax = (x - curx1) / dx;
+
+						byte z = (byte)(255 - ((1 - ax) * z1 + ax * z2));
+
+						backbuffer[x, scanlineY, 0] = z;
+						backbuffer[x, scanlineY, 1] = z;
+						backbuffer[x, scanlineY, 2] = z;
+					}
+					curx1 += invslope1;
+					curx2 += invslope2;
+				}
+			}
 		}
 
 		public struct Mesh
@@ -53,6 +128,8 @@ namespace RasterTraceRenderer
 			int h = drawBuffer.Height;
 			int w = drawBuffer.Width;
 
+			tester.FillBottom();
+
 			unsafe
 			{
 				byte* p = (byte*)(void*)Scan0;
@@ -62,13 +139,13 @@ namespace RasterTraceRenderer
 					for (int x = 0; x < w; ++x)
 					{
 						//Blue
-						p[0] = (byte)rand.Next(255);
+						p[0] = backbuffer[x, y, 2];
 
 						//Green
-						p[1] = (byte)rand.Next(255);
+						p[1] = backbuffer[x, y, 1];
 
 						//Red
-						p[2] = (byte)rand.Next(255);
+						p[2] = backbuffer[x, y, 0];
 
 						//Next Pixel
 						p += 4;
@@ -114,10 +191,11 @@ namespace RasterTraceRenderer
 
 		private void Form1_Load(object sender, EventArgs e)
 		{
-			tester.verts = new Utils.Vec[3];
-			tester.verts[0] = new Utils.Vec(new double[] { 20, 20 });
-			tester.verts[1] = new Utils.Vec(new double[] { 50, 50 });
-			tester.verts[2] = new Utils.Vec(new double[] { 50, 20 });
+			tester.INIT();
+			backbuffer = new byte[img.Width, img.Height, 3];
+			tester[0] = new Utils.Vec(new double[] { 20, 160, 0 });
+			tester[1] = new Utils.Vec(new double[] { 160, 160, 127 });
+			tester[2] = new Utils.Vec(new double[] { 90, 20, 255 });
 			GameLoop();
 		}
 	}
