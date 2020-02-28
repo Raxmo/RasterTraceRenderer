@@ -7,8 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+//using System.Windows.Media;
+//using System.Windows.Media.Imaging;
 using System.Diagnostics;
 using System.Threading;
 using System.IO;
@@ -18,7 +18,7 @@ namespace RasterTraceRenderer
 {
 	public partial class Form1 : Form
 	{
-		double FT = 0;
+		static double FT = 0;
 		Stopwatch sw = new Stopwatch();
 		static int FPS = 60;
 		double deltat = 0;
@@ -27,7 +27,7 @@ namespace RasterTraceRenderer
 
 		static byte[,,] backbuffer;
 
-		Random rand = new Random();
+		static Random rand = new Random();
 
 		public struct Tri
 		{
@@ -48,7 +48,7 @@ namespace RasterTraceRenderer
 				verts = new Utils.Vec[3];
 			}
 
-			public void FillBottom()
+			public void Fill()
 			{
 				Utils.Vec p1 = this[0];
 				Utils.Vec p2 = this[1];
@@ -56,53 +56,96 @@ namespace RasterTraceRenderer
 
 				Utils.Vec t = p3;
 
-				if(p3.y < p2.y)
+				if (p3.y < p2.y)
 				{
 					p3 = p2;
 					p2 = t;
 				}
-				if(p2.y < p1.y)
+				if (p2.y < p1.y)
 				{
 					t = p2;
 					p2 = p1;
 					p1 = t;
 				}
-				if(p3.y < p2.y)
+				if (p3.y < p2.y)
 				{
 					t = p3;
 					p3 = p2;
 					p2 = t;
 				}
 
-				double invslope1 = (p2.x - p1.x) / (p2.y - p1.y);
-				double invslope2 = (p3.x - p1.x) / (p3.y - p1.y);
-				
-				double curx1 = p1.x;
-				double curx2 = p1.x;
+				double q = 0;
+				double p = 0;
 
-				double dy = p2.y - p1.y;
+				double dy1 = p2.y - p1.y;
+				double dy2 = p3.y - p1.y;
+				double dy3 = p3.y - p2.y;
 
-				for (int scanlineY =(int)p1.y; scanlineY <= (int)p2.y; scanlineY++)
+				if (p1.y != p2.y)
 				{
-					double ay = (scanlineY - p1.y) / dy;
-
-					double z1 = (1 - ay) * p1.z + ay * p2.z;
-					double z2 = (1 - ay) * p1.z + ay * p3.z;
-
-					double dx = curx2 - curx1;
-
-					for(int x = (int)curx1; x <= (int)curx2; x++)
+					for (int y = (int)p1.y; y <= (int)p2.y; y++)
 					{
-						double ax = (x - curx1) / dx;
+						double ay1 = (y - p1.y) / dy1;
+						double ay2 = (y - p1.y) / dy2;
 
-						byte z = (byte)(255 - ((1 - ax) * z1 + ax * z2));
+						double x1 = (1 - ay1) * p1.x + ay1 * p2.x;
+						double x2 = (1 - ay2) * p1.x + ay2 * p3.x;
 
-						backbuffer[x, scanlineY, 0] = z;
-						backbuffer[x, scanlineY, 1] = z;
-						backbuffer[x, scanlineY, 2] = z;
+						q = Math.Min(x1, x2);
+						p = Math.Max(x1, x2);
+
+						x1 = q;
+						x2 = p;
+						
+						double z1 = (1 - ay1) * p1.z + ay1 * p2.z;
+						double z2 = (1 - ay2) * p1.z + ay2 * p3.z;
+
+						double dx = x2 - x1;
+
+						for (int x = (int)x1; x <= (int)x2; x++)
+						{
+							double ax = (x - x1) * (1 / dx);
+
+							double z = 255 - ((1 - ax) * z1 + ax * z2);
+
+							backbuffer[x, y, 0] = (byte)z;
+							backbuffer[x, y, 1] = (byte)z;
+							backbuffer[x, y, 2] = (byte)z;
+						}
 					}
-					curx1 += invslope1;
-					curx2 += invslope2;
+				}
+				if (p2.y != p3.y)
+				{
+					for (int y = (int)p2.y; y <= (int)p3.y; y++)
+					{
+						double ay1 = (y - p2.y) / dy3;
+						double ay2 = (y - p1.y) / dy2;
+
+						double x1 = (1 - ay1) * p2.x + ay1 * p3.x;
+						double x2 = (1 - ay2) * p1.x + ay2 * p3.x;
+
+						q = Math.Min(x1, x2);
+						p = Math.Max(x1, x2);
+
+						x1 = q;
+						x2 = p;
+
+						double z1 = (1 - ay1) * p2.z + ay1 * p3.z;
+						double z2 = (1 - ay2) * p1.z + ay2 * p3.z;
+
+						double dx = x2 - x1;
+
+						for (int x = (int)x1; x <= (int)x2; x++)
+						{
+							double ax = (x - x1) * (1 / dx);
+
+							double z = 255 - ((1 - ax) * z1 + ax * z2);
+
+							backbuffer[x, y, 0] = (byte)z;
+							backbuffer[x, y, 1] = (byte)z;
+							backbuffer[x, y, 2] = (byte)z;
+						}
+					}
 				}
 			}
 		}
@@ -122,13 +165,13 @@ namespace RasterTraceRenderer
 		public Bitmap Draw()
 		{
 			Bitmap drawBuffer = new Bitmap(img.Width, img.Height);
-			BitmapData dat = drawBuffer.LockBits(new Rectangle(0, 0, drawBuffer.Width, drawBuffer.Height), ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+			BitmapData dat = drawBuffer.LockBits(new Rectangle(0, 0, drawBuffer.Width, drawBuffer.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppRgb);
 			IntPtr Scan0 = dat.Scan0;
 			int stride = dat.Stride;
 			int h = drawBuffer.Height;
 			int w = drawBuffer.Width;
 
-			tester.FillBottom();
+			tester.Fill();
 
 			unsafe
 			{
@@ -193,9 +236,9 @@ namespace RasterTraceRenderer
 		{
 			tester.INIT();
 			backbuffer = new byte[img.Width, img.Height, 3];
-			tester[0] = new Utils.Vec(new double[] { 20, 160, 0 });
-			tester[1] = new Utils.Vec(new double[] { 160, 160, 127 });
-			tester[2] = new Utils.Vec(new double[] { 90, 20, 255 });
+			tester[0] = new Utils.Vec(new double[] { 20, 20, 0 });
+			tester[1] = new Utils.Vec(new double[] { 170, 70, 127 });
+			tester[2] = new Utils.Vec(new double[] { 70, 170, 255 });
 			GameLoop();
 		}
 	}
